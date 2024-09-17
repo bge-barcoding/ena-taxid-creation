@@ -1,13 +1,13 @@
 # ena_taxonomy_request.py
-Reads [sample2taxid].csv (see [sample-processing repo](https://github.com/SchistoDan/sample-processing)), filters rows where matched_rank != "Species", renames and reorders columns based on taxonomy request spreadsheet requirements, and outputs results to .tsv file to be emailed to ENA for taxid creation.
+Reads samples_metadata.csv (see [sample-processing repo](https://github.com/SchistoDan/sample-processing)), filters rows where matched_rank != "Species", renames and reorders columns based on taxonomy request spreadsheet requirements, and outputs results to .tsv file to be emailed to ENA for taxid creation.
 
 Requires [pygbif](https://github.com/gbif/pygbif) be installed in conda env to grab GBIF ID's from [GBIF Backbone taxonomy](https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c) using API.
 
 
-**usage: python ena_taxonomy_request.py [path/to/sample2taxid.csv] taxonomy_request.tsv species_output.csv**
-- path/to/[sample2taxid].csv = path to user-named output.csv file from [sample-processing repo](https://github.com/SchistoDan/sample-processing).
-- taxonomy_request.tsv = .tsv file containing necessary fields for requesting taxonomic id creation by ENA. Can be named anything (see below).
-- specis_output.csv = .csv file containing rows from sample2taxid.csv where matched_rank == 'species'.
+**usage: python ena_taxonomy_request.py [path/to/sample_metadata.csv] taxonomy_request.tsv species_output.csv**
+- path/to/sample_metadata.csv = path to 1_sample_processing.py output.csv file from [sample-processing repo](https://github.com/SchistoDan/sample-processing).
+- taxonomy_request.tsv = output .tsv file containing necessary fields for requesting taxonomic id creation by ENA. Can be named anything (see below).
+- specis_output.csv = putput .csv file containing rows from sample_metadata.csv where matched_rank == 'species'.
 
 | proposed_name  | name_type | host | project_id | description |
 | --------- | --------- |--------- | --------- | --------- |
