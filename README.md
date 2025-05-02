@@ -3,17 +3,27 @@ A Python script for processing taxonomic data and generating properly formatted 
 
 ## Features
 - Processes taxonomic metadata from CSV files
-- Validates scientific names against GBIF taxonomy - checks name existence and spelling, taxonomic status (accepted/synonym), match confidence (>95% for species / >90% for genus), and match type (exact/fuzzy), as per GBIF guidlines. E.g., for species-level matches:
-```
-- Has a valid binomial name (two words and no "sp." designation)
-- Has a confidence score above 95%
-- Has status "ACCEPTED" in GBIF
-- Has match type "EXACT" in GBIF
-```
+- Validates scientific names against GBIF taxonomy - checks name existence and spelling, taxonomic status (accepted/synonym), match confidence (>95% for species / >90% for genus), and match type (exact/fuzzy), as per GBIF guidlines.
 - Implements hierarchical fallback for taxonomic identification (uses species name if available, otherwise falls back to "Genus sp. {process_id}" if only genus is available, or "Family sp. {process_id}" if only family is available.
-- Performs taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and kingdom ranks).
+- Performs taxonomic rank validation 
 - Handles synonyms and taxonomic updates
 - Generates ENA-compliant taxonomy request files (see below).
+
+## Logic
+- Matches Process ID's in samples.csv with those in metadata.csv (as a sample filtering step).
+- For those that match with matched_rank (in metadata.csv) == 'species' aren't processed further (they have a species-level taxid).
+- For those that match with matched_rank != 'species', process these samples.
+- Take the lowest available input taxonomic name for each sample to be processed and search in GBIF (using pygbif).
+- Perform taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and kingdom ranks). If failed validation, output sample to tax_validation_fails.csv
+- If passed validation, determine if search taxonomic name and GBIF taxonomy meet the following criteria:
+- ```
+- Has status "ACCEPTED"
+- Has match type "EXACT"
+- Has a confidence score >95% (species) or >90% (genus)
+- Has a valid binomial name (<genus> <species>) or is a novel species (<genus> sp.)
+```
+- If valid, fetch GBIF ID and output sample to taxonomy_request.tsv.
+- If not valid, fetch GBIF information and output sample to gbif_inconsistent.tsv for manual checking.
 
 ## Prerequisites
 - Python 3.6+
