@@ -11,7 +11,7 @@ A Python script for processing taxonomic data and generating properly formatted 
 - Has match type "EXACT" in GBIF
 ```
 - Implements hierarchical fallback for taxonomic identification (uses species name if available, otherwise falls back to "Genus sp. {process_id}" if only genus is available, or "Family sp. {process_id}" if only family is available.
-- Performs taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order and class ranks).
+- Performs taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and kingdom ranks).
 - Handles synonyms and taxonomic updates
 - Generates ENA-compliant taxonomy request files (see below).
 
@@ -38,7 +38,7 @@ python ena_taxonomy_request.py path/to/sample_metadata.csv path/to/samples.csv o
 ```
 
 ## Input files
-- **metadata.csv**: Contains columns:
+- **metadata.csv**: Must contain columns:
   - Process ID
   - phylum
   - class
@@ -49,7 +49,7 @@ python ena_taxonomy_request.py path/to/sample_metadata.csv path/to/samples.csv o
   - matched_rank
   - taxid
 
-- **samples.csv**: Contains columns:
+- **samples.csv**: Must contain columns:
   - ID (i.e. Process ID)
 
 ## Output Files
