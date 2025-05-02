@@ -25,6 +25,32 @@ A Python script for processing taxonomic data and generating properly formatted 
 - If valid, fetch GBIF ID and output sample to taxonomy_request.tsv.
 - If not valid, fetch GBIF information and output sample to gbif_inconsistent.tsv for manual checking.
 
+INTEGRATE UPDATED SEARCHING LOGIC
+Step 1: name_backbone with strict=False
+pythonresult = species.name_backbone(name='Solieria pacifica', strict=False)
+
+name_backbone tries to match a name against the GBIF backbone taxonomy (their master taxonomic reference)
+Setting strict=False allows it to match against higher classification levels if no direct match is found
+This is typically faster and more precise, but can sometimes miss matches that would appear on the GBIF website
+For Solieria pacifica, this might initially return a "matchType=NONE" result
+
+Step 2: Fall back to species.search() (which is name_lookup)
+pythonspecies_search_results = species.search(q='Solieria pacifica', limit=5)
+
+The search function (which calls name_lookup) is a more comprehensive fuzzy search
+It searches across ALL taxonomies in GBIF, not just the backbone
+This is closer to how the GBIF website search works
+It can find matches even when name_backbone fails
+For Solieria pacifica, this would find both the plant and insect versions
+
+Step 3: Get detailed information with species.name_usage()
+pythonif first_match.get('key'):
+    species_details = species.name_usage(key=first_match.get('key'))
+
+Once we have a match and its key (unique ID) from name_lookup, we use name_usage to get complete details
+name_usage retrieves full taxonomic information about that specific taxon
+This gives us all the hierarchical data needed (phylum, class, order, etc.) for validation
+For Solieria pacifica, this would return complete taxonomic details for validation
 ## Prerequisites
 - Python 3.6+
 - Required Python packages:
