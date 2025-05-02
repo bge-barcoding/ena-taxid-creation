@@ -16,7 +16,7 @@ A Python script for processing taxonomic data and generating properly formatted 
 - Take the lowest available input taxonomic name for each sample to be processed and search in GBIF (using pygbif).
 - Perform taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and kingdom ranks). If failed validation, output sample to tax_validation_fails.csv
 - If passed validation, determine if search taxonomic name and GBIF taxonomy meet the following criteria:
-- ```
+```
 - Has status "ACCEPTED"
 - Has match type "EXACT"
 - Has a confidence score >95% (species) or >90% (genus)
