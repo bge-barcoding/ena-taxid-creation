@@ -44,7 +44,7 @@ pip install pandas pygbif
 
 ## Usage
 ```
-python ena_taxonomy_request.py path/to/sample_metadata.csv path/to/samples.csv output_prefix
+python ena_taxonomy_request.py -m/--metadata <path/to/sample_metadata.csv> -s/--samples <path/to/samples.csv> -op/--out_prefix <output_prefix>
 ```
 
 ## Input files
@@ -63,7 +63,7 @@ python ena_taxonomy_request.py path/to/sample_metadata.csv path/to/samples.csv o
   - ID (i.e. Process ID)
 
 ## Output Files
-The script generates several output files with the specified prefix:
+The script generates several output files into an output directory with the specified prefix:
 - {prefix}_taxonomy_request.tsv: Main output file formatted for ENA submission
 - {prefix}_tax_validation_fails.csv: Records that failed taxonomic validation
 - {prefix}_gbif_inconsistent.tsv: Records with GBIF inconsistencies (synonyms, etc.)
