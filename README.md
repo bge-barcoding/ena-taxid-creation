@@ -3,7 +3,13 @@ A Python script for processing taxonomic data and generating properly formatted 
 
 ## Features
 - Processes taxonomic metadata from CSV files
-- Validates scientific names against GBIF taxonomy - checks name existence and spelling, taxonomic status (accepted/synonym), match confidence (>95% for species / >90% for genus), and match type (exact/fuzzy), as per GBIF guidlines.
+- Validates scientific names against GBIF taxonomy - checks name existence and spelling, taxonomic status (accepted/synonym), match confidence (>95% for species / >90% for genus), and match type (exact/fuzzy), as per GBIF guidlines. E.g., for species-level matches:
+```
+- Has a valid binomial name (two words and no "sp." designation)
+- Has a confidence score above 95%
+- Has status "ACCEPTED" in GBIF
+- Has match type "EXACT" in GBIF
+```
 - Implements hierarchical fallback for taxonomic identification (uses species name if available, otherwise falls back to "Genus sp. {process_id}" if only genus is available, or "Family sp. {process_id}" if only family is available.
 - Performs taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order and class ranks).
 - Handles synonyms and taxonomic updates
