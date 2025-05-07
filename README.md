@@ -14,7 +14,7 @@ A Python script for processing taxonomic data and generating properly formatted 
 - For those that match with matched_rank (in metadata.csv) == 'species' aren't processed further (they have a species-level taxid).
 - For those that match with matched_rank != 'species', process these samples.
 - Take the lowest available input taxonomic name for each sample to be processed and search in GBIF (using pygbif).
-- Perform taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and kingdom ranks). If failed validation, output sample to tax_validation_fails.csv
+- Perform taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and phyla ranks). If failed validation, output sample to tax_validation_fails.csv
 - If passed validation, determine if search taxonomic name and GBIF taxonomy meet the following criteria:
 ```
 - Has status "ACCEPTED"
@@ -22,8 +22,8 @@ A Python script for processing taxonomic data and generating properly formatted 
 - Has a confidence score >95% (species) or >90% (genus)
 - Has a valid binomial name (<genus> <species>) or is a novel species (<genus> sp.)
 ```
-- If valid, fetch GBIF ID and output sample to taxonomy_request.tsv.
-- If not valid, fetch GBIF information and output sample to gbif_inconsistent.tsv for manual checking.
+- If valid, fetch GBIF ID, check record is in GBIF Taxonomy Backbone, and if so, output sample to taxonomy_request.tsv.
+- If not valid or not in GBIF Taxonomy Backbone, fetch GBIF information and output sample to gbif_inconsistent.tsv for manual checking.
 
 INTEGRATE UPDATED SEARCHING LOGIC
 Step 1: name_backbone with strict=False
