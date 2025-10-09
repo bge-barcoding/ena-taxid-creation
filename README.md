@@ -1,99 +1,124 @@
-# ENA Taxonomy Request File Generator
-A Python script for processing taxonomic data and generating properly formatted taxonomy request files for the European Nucleotide Archive (ENA). This tool specialises in handling cases where species-level taxonomy IDs are not available, and uses IDs from the [GBIF Backbone taxonomy](https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c), fetched using the [GBIF Species API](https://techdocs.gbif.org/en/openapi/v1/species) to support requests to ENA.
+# ENA Taxonomic Identifier (TaxID) validation and request workflow
+A three script pipeline for validating current taxonomic identifiers against NCBI (using TaxonKit) and ENA taxonomy databases, retrieving GBIF metadata, and generating ENA taxonomy request files for specimens without species-level TaxIDs.
 
-## Features
-- Processes taxonomic metadata from CSV files
-- Validates scientific names against GBIF taxonomy
-- Implements hierarchical fallback for taxonomic identification (uses species name if available, otherwise falls back to "Genus sp. {process_id}" if only genus is available, or "Family sp. {process_id}" if only family is available.
-- Performs taxonomic rank validation 
-- Handles synonyms and taxonomic updates
-- Generates ENA-compliant taxonomy request files (see below).
+## Overview
+This workflow processes taxonomic data through three sequential scripts:
+1. **GBIF metadata retrieval and species validation** (`01_run_check_gbif_ids.R`) - Queries GBIF for taxonomic information
+2. **Check 01_gbif_results.xlsx and manually update filtered sample_metadata.csv** - Manually check outcome of GBIF taxonomy and metadata retrieval, and update as necessary
+3. **Taxonomic ID validation** (`02_taxid_check.py`) - Validates taxonomic IDs using TaxonKit and ENA databases
+4. **ENA request generation** (`03_request_generator.py`) - Creates properly formatted TSV files for ENA taxonomic ID requests
 
-## Logic
-- Matches Process ID's in samples.csv with those in metadata.csv (as a sample filtering step).
-- For those that match with matched_rank (in metadata.csv) == 'species' aren't processed further (they have a species-level taxid).
-- For those that match with matched_rank != 'species', process these samples.
-- Take the lowest available input taxonomic name for each sample to be processed and search in GBIF (using pygbif).
-- Perform taxonomic rank validation of returned GBIF taxonomy against provided taxonomy (validates taxonomy at order, class and phyla ranks). If failed validation, output sample to tax_validation_fails.csv
-- If passed validation, determine if search taxonomic name and GBIF taxonomy meet the following criteria:
-```
-- Has status "ACCEPTED"
-- Has match type "EXACT"
-- Has a confidence score >95% (species) or >90% (genus)
-- Has a valid binomial name (<genus> <species>) or is a novel species (<genus> sp.)
-```
-- If valid, fetch GBIF ID, check record is in GBIF Taxonomy Backbone, and if so, output sample to taxonomy_request.tsv.
-- If not valid or not in GBIF Taxonomy Backbone, fetch GBIF information and output sample to gbif_inconsistent.tsv for manual checking.
-
-INTEGRATE UPDATED SEARCHING LOGIC
-Step 1: name_backbone with strict=False
-pythonresult = species.name_backbone(name='Solieria pacifica', strict=False)
-
-name_backbone tries to match a name against the GBIF backbone taxonomy (their master taxonomic reference)
-Setting strict=False allows it to match against higher classification levels if no direct match is found
-This is typically faster and more precise, but can sometimes miss matches that would appear on the GBIF website
-For Solieria pacifica, this might initially return a "matchType=NONE" result
-
-Step 2: Fall back to species.search() (which is name_lookup)
-pythonspecies_search_results = species.search(q='Solieria pacifica', limit=5)
-
-The search function (which calls name_lookup) is a more comprehensive fuzzy search
-It searches across ALL taxonomies in GBIF, not just the backbone
-This is closer to how the GBIF website search works
-It can find matches even when name_backbone fails
-For Solieria pacifica, this would find both the plant and insect versions
-
-Step 3: Get detailed information with species.name_usage()
-pythonif first_match.get('key'):
-    species_details = species.name_usage(key=first_match.get('key'))
-
-Once we have a match and its key (unique ID) from name_lookup, we use name_usage to get complete details
-name_usage retrieves full taxonomic information about that specific taxon
-This gives us all the hierarchical data needed (phylum, class, order, etc.) for validation
-For Solieria pacifica, this would return complete taxonomic details for validation
 ## Prerequisites
-- Python 3.6+
-- Required Python packages:
-  - pandas
-  - pygbif
-  - logging
-
-## Installation
-1. Clone this repository:
+### Conda environment
+- Create from ena_taxid.yaml:
+  ```bash
+  conda env create -f ena_taxid.yaml
+  ```
+### TaxonKit Database
 ```bash
-git clone [repository-url]
+# Download and decompress NCBI taxdump
+wget -c [ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz](https://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz)
+tar -zxvf new_taxdump.tar.gz
+# Remove all .dmp files, other than names.dmp, nodes.dmp, delnodes.dmp, and merged.dmp
 ```
-2. Install required packages, e.g. pandas and [pygbif](https://github.com/gbif/pygbif)
+
+## Input file requirements
+The initial input file can easily be created from the BGE sample_metadata.csv file using the `filter_csv.py` script, or manually. It must contain at minimum these columns (supported formats = CSV, TSV, or XLSX):
+- `Process ID` - Unique identifier for each sample
+- `species` - Species name (use "not collected" for unknown species)
+- `genus` - Genus name (required if species is "not collected")
+- Additional taxonomic columns: `phylum`, `class`, `order`, `family` (optional but recommended)
+```
+# filter_csv.py usage:
+    python filter_csv.py --csv [input_csv] --txt [input_txt] --filter [csv column to filter on] --output [output_csv]
+
+--csv = Input CSV file containing (at least) the columns above
+--txt = Input text file with filter values (one per line). For example, a list of Process IDs to filter/extract from input CSV file
+--filter = Column name to filter on (e.g., "Process ID")
+--output = Output CSV file path
+```
+
+
+## Workflow Steps
+### Step 1: GBIF metadata retrieval and species validation
+Queries the GBIF database for taxonomic information and metadata.
+- Input = CSV file with taxonomic data (such as output by filter_csv.py)
+- Output = Excel file with GBIF results, including process_id (from input CSV), taxa ('species' from input CSV), gbif_id (GBIF TaxonIDs), gbif_key (GBIF key), id_key_match (TRUE/FALSE comparison of gbif_id and gbif_key), authorship (from GBIF record), accepted_name (taxon name in GBIF), taxa_accepted_name_match (TRUE/FALSE comparison of input taxa name and GBIF accepted_name), lineage (from GBIF record), and gbif_link (to species page), reference (supporting literature reference, if found).
+
 ```bash
-pip install pandas pygbif
+# Edit 01_run_check_gbif_ids.R to specify your input/output files and paths
+# Then run:
+Rscript 01_run_check_gbif_ids.R
 ```
 
-## Usage
+**Example configuration in 01_run_check_gbif_ids.R:**
+```R
+get_gbifid_out(
+  csv_file = "./path/to/your_input_data.csv", 
+  out_file = "./path/to/01_gbif_results.xlsx"
+)
 ```
-python ena_taxonomy_request.py -m/--metadata <path/to/sample_metadata.csv> -s/--samples <path/to/samples.csv> -op/--out_prefix <output_prefix>
+
+
+### Step 2: Check 01_gbif_results.xlsx and manually update filtered sample_metadata.csv
+- Check if 'id_key_match' and/or 'taxa_accepted_name_match' == FALSE for any sample.
+- Validate correct GBIF identifier (id or key) and correct taxon name (taxa or accepted_name) in [GBIF](https://www.gbif.org/species/search?q=).
+- Manually update 'species' column for those samples that require it.
+
+
+
+### Step 3: Taxonomic ID validation
+Validates taxonomic IDs using both TaxonKit (NCBI taxonomy) and ENA taxonomy databases (searches ENA for exact matches in scientific names and synonyms).
+- Input = Original CSV/TSV/XLSX file with (updated) taxonomic data from step 2
+- Output =
+    - `02_taxid_check.csv` - Full results with TaxonKit (NCBI) and ENA TaxIDs (if found). Input CSV + additional columns (taxonkit_name (Name matched by TaxonKit), taxonkit_taxid (NCBI taxonomy ID from TaxonKit), taxonkit_lookup_warning (Any warnings), ena_scientificName (Scientific name from ENA), ena_TaxId (ENA taxonomic ID), taxid_match (TRUE/FALSE/EMPTY))
+    - `02_no_taxids.csv` - Rows where both TaxonKit and ENA failed to find a TaxID
+    - `02_check_taxids.log` - \Script processing log
+```bash
+python 02_taxid_check.py --input sample_metadata-updated.csv --data-dir ~/new_taxdump/
+```
+- `taxid_match` - Comparison result:
+  - `TRUE` - Both TaxIDs present and match
+  - `FALSE` - ENA TaxID missing OR TaxIDs don't match
+  - Empty - TaxonKit TaxID missing but ENA has value
+
+
+### Step 4: ENA TaxID request generation
+Creates a properly formatted TSV file for submitting taxonomic ID requests to ENA.
+- Input = 
+    - `02_taxid_check.csv` from Step 3
+    - `01_gbif_results.xlsx` from Step 1
+- Output = TSV file formatted for ENA taxonomic ID creation request
+```bash
+python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 01_gbif_results.xlsx -o ena_taxonomy_request.tsv
 ```
 
-## Input files
-- **metadata.csv**: Must contain columns:
-  - Process ID
-  - phylum
-  - class
-  - order
-  - family
-  - genus
-  - species
-  - matched_rank
-  - taxid
+**Output format:**
+| Column | Description |
+|--------|-------------|
+| `proposed_name` | Species name or novel species designation |
+| `name_type` | `published_name` or `novel_species` |
+| `host` | Host organism (empty by default) |
+| `project_id` | Project identifier (default: "Biodiversity Genomics Europe") |
+| `description` | GBIF link as evidence of valid speces concept |
 
-- **samples.csv**: Must contain columns:
-  - ID (i.e. Process ID)
+**Logic:**
+- Processes only rows where `taxid_match == "FALSE"` (i.e. where a TaxID was not found in ENA, or TaxIDs between TaxonKit (NCBI) and ENA do not match)
+- For known species: uses `published_name` type with species name
+- For unknown species: uses `novel_species` type with format `[Genus] sp. [Process ID]`
 
-## Output Files
-The script generates several output files into an output directory with the specified prefix:
-- {prefix}_taxonomy_request.tsv: Main output file formatted for ENA submission
-- {prefix}_tax_validation_fails.csv: Records that failed taxonomic validation
-- {prefix}_gbif_inconsistent.tsv: Records with GBIF inconsistencies (synonyms, etc.)
-- {prefix}.log: Detailed processing log
+
+## Complete Workflow Example
+```bash
+# Step 1: Get GBIF metadata
+Rscript 01_run_check_gbif_ids.R
+
+# Step 2: Validate taxonomy IDs
+python 02_taxid_check.py --input your_samples.csv --data-dir ~/taxonkit_db
+
+# Step 3: Generate ENA request file
+python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 01_gbif_results.xlsx -o ena_taxonomy_request.tsv
+```
 
 ### Example {prefix}_taxonomy_request.tsv
 | proposed_name  | name_type | host | project_id | description |
@@ -102,13 +127,6 @@ The script generates several output files into an output directory with the spec
 | Agapetus iridipennis | published_name |  | BGE | https://www.gbif.org/species/[GBIF ID] | 
 | Papomyia sp. BSNHM191-24 | novel_species |  | BGE | https://www.gbif.org/species/[GBIF ID] | 
 
-### Example {prefix}_gbif_inconsistent.tsv
-| usageKey |	scientificName |	canonicalName |	rank |	status |	confidence |	matchType |	kingdom |	phylum | order |	family |	genus |	species |	kingdomKey |	phylumKey |	classKey |	orderKey |	familyKey |	genusKey |	speciesKey |	synonym |	class |	index	| acceptedUsageKey |
-| --- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- | --- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	--- |	---	| --- |
-| 8753555	| Erotesis melanella McLachlan, 1884 | Erotesis melanella	| SPECIES	| SYNONYM	| 98	| EXACT	| Animalia	| Arthropoda |	Trichoptera |	Leptoceridae |	Adicella |	Adicella melanella |	1 |	54 |	216 | 1003	| 4395	| 1436670	| 1436745	| True |	Insecta	| 5	| 1436745 |
-
-  - Erotesis melanella McLachlan, 1884 == [8753555](https://www.gbif.org/species/8753555)
-  - Adicella melanella (McLachlan, 1884) == [1436745](https://www.gbif.org/species/1436745)
 
 ## Authors
 - Dan Parsons @NHMUK
