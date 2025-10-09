@@ -114,7 +114,7 @@ python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 0
 Rscript 01_run_check_gbif_ids.R
 
 # Step 2: Validate taxonomy IDs
-python 02_taxid_check.py --input your_samples.csv --data-dir ~/taxonkit_db
+python 02_taxid_check.py --input your_samples.csv --data-dir /new_taxdump/
 
 # Step 3: Generate ENA request file
 python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 01_gbif_results.xlsx -o ena_taxonomy_request.tsv
