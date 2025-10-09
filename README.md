@@ -51,7 +51,7 @@ Queries the GBIF database for taxonomic information and metadata.
 Rscript 01_run_check_gbif_ids.R
 ```
 
-**Example configuration in 01_run_check_gbif_ids.R:**
+Example configuration in 01_run_check_gbif_ids.R:
 ```R
 get_gbifid_out(
   csv_file = "./path/to/your_input_data.csv", 
@@ -120,13 +120,5 @@ python 02_taxid_check.py --input your_samples.csv --data-dir ~/taxonkit_db
 python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 01_gbif_results.xlsx -o ena_taxonomy_request.tsv
 ```
 
-### Example {prefix}_taxonomy_request.tsv
-| proposed_name  | name_type | host | project_id | description |
-| --------- | --------- |--------- | --------- | --------- |
-| Apatania stylata  | published_name |  | BGE | https://www.gbif.org/species/[GBIF ID] | 
-| Agapetus iridipennis | published_name |  | BGE | https://www.gbif.org/species/[GBIF ID] | 
-| Papomyia sp. BSNHM191-24 | novel_species |  | BGE | https://www.gbif.org/species/[GBIF ID] | 
-
-
 ## Authors
-- Dan Parsons @NHMUK
+- Dan Parsons, Maria Kamouyiaros & Ben Price @NHMUK
