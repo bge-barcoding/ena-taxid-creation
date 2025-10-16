@@ -108,6 +108,7 @@ python 03_request_generator.py --taxid_check 02_taxid_check.csv --gbif_results 0
 - For unknown species: uses `novel_species` type with format `[Genus] sp. [Process ID]`
 
 
+
 ## Complete Workflow Example
 ```bash
 # Step 1: Get GBIF metadata
